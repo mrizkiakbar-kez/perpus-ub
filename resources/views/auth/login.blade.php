@@ -216,7 +216,7 @@
             </form>
 
             <div class="login-footer">
-                Belum punya akun? <a href="#">Hubungi administrator</a>
+                Belum punya akun? <a href="{{ route('register') }}">Daftar Akun Baru</a>
             </div>
         </div>
     </div>

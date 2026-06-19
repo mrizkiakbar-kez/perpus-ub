@@ -16,7 +16,7 @@ class IsMember
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (session()->has('member_id')) {
+        if (session()->has('member_id') || (Auth::check() && Auth::user()->role === 'member')) {
             return $next($request);
         }
 

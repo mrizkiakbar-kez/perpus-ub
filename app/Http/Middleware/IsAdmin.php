@@ -20,6 +20,6 @@ class IsAdmin
             return $next($request);
         }
 
-        return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke halaman ini.');
+        return redirect()->route('member.dashboard')->with('error', 'Anda tidak memiliki akses ke halaman ini.');
     }
 }

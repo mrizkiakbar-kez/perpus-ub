@@ -13,7 +13,11 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
-            return redirect()->route('admin.dashboard');
+            if (Auth::user()->role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            } else {
+                return redirect()->route('member.dashboard');
+            }
         } elseif (session()->has('member_id')) {
             return redirect()->route('member.dashboard');
         }
@@ -30,7 +34,7 @@ class AuthController extends Controller
         $login = $credentials['login'];
         $password = $credentials['password'];
 
-        // 1. Try to authenticate as Admin user (email, name, or email prefix)
+        // 1. Try to authenticate as Admin/User (email, name, or email prefix)
         $user = User::where('email', $login)
             ->orWhere('name', $login)
             ->orWhere('email', 'like', $login . '@%')
@@ -55,7 +59,30 @@ class AuthController extends Controller
             if ($adminAuthenticated) {
                 Auth::login($user);
                 $request->session()->regenerate();
-                return redirect()->route('admin.dashboard')->with('success', 'Berhasil login sebagai admin!');
+                
+                if ($user->role === 'admin') {
+                    return redirect()->route('admin.dashboard')->with('success', 'Berhasil login sebagai admin!');
+                } else {
+                    // For members in users table: find or create corresponding member record
+                    $member = Member::where('email', $user->email)->first();
+                    if (!$member) {
+                        $latestMember = Member::latest()->first();
+                        $latestId = $latestMember ? $latestMember->id + 1 : 1;
+                        $kodeAnggota = 'MBR' . str_pad($latestId, 3, '0', STR_PAD_LEFT);
+                        
+                        $member = Member::create([
+                            'kode_anggota' => $kodeAnggota,
+                            'nama' => $user->name,
+                            'email' => $user->email,
+                            'password' => $password, // Mutator hashes it
+                            'telepon' => '-',
+                            'alamat' => '-',
+                            'role' => 'member',
+                        ]);
+                    }
+                    session(['member_id' => $member->id, 'member' => $member]);
+                    return redirect()->route('member.dashboard')->with('success', 'Berhasil login sebagai anggota!');
+                }
             }
         }
 
@@ -94,6 +121,60 @@ class AuthController extends Controller
         ])->onlyInput('login');
     }
 
+    public function showRegister()
+    {
+        if (Auth::check()) {
+            if (Auth::user()->role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            } else {
+                return redirect()->route('member.dashboard');
+            }
+        } elseif (session()->has('member_id')) {
+            return redirect()->route('member.dashboard');
+        }
+        return view('auth.register');
+    }
+
+    public function register(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email|unique:members,email',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        // Create User record in users table (role = member)
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'role' => 'member',
+        ]);
+
+        // Generate unique member code (kode_anggota)
+        $latestMember = Member::latest()->first();
+        $latestId = $latestMember ? $latestMember->id + 1 : 1;
+        $kodeAnggota = 'MBR' . str_pad($latestId, 3, '0', STR_PAD_LEFT);
+
+        // Create matching Member record in members table
+        $member = Member::create([
+            'kode_anggota' => $kodeAnggota,
+            'nama' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'], // Member model setPasswordAttribute mutator will hash it
+            'telepon' => '-',
+            'alamat' => '-',
+            'role' => 'member',
+        ]);
+
+        // Log the user in on both guard and session
+        Auth::login($user);
+        session(['member_id' => $member->id, 'member' => $member]);
+        $request->session()->regenerate();
+
+        return redirect()->route('member.dashboard')->with('success', 'Akun berhasil didaftarkan!');
+    }
+
     public function logout(Request $request)
     {
         Auth::logout();
@@ -103,4 +184,3 @@ class AuthController extends Controller
         return redirect()->route('login')->with('success', 'Berhasil logout!');
     }
 }
-

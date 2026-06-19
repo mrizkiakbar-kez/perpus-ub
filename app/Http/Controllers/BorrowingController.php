@@ -149,4 +149,71 @@ class BorrowingController extends Controller
             return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
+
+    public function borrowDirect(Request $request, $bookId)
+    {
+        // 1. Get current member ID from session or logged-in user details
+        $memberId = session('member_id');
+        if (!$memberId && Auth::check() && Auth::user()->role === 'member') {
+            $member = Member::where('email', Auth::user()->email)->first();
+            $memberId = $member?->id;
+        }
+
+        if (!$memberId) {
+            return redirect()->route('login')->with('error', 'Anda harus login sebagai anggota untuk meminjam buku.');
+        }
+
+        // 2. Prevent borrowing duplicate copy of the same book if already borrowed and not returned
+        $alreadyBorrowed = Borrowing::where('member_id', $memberId)
+            ->where('status', 'Dipinjam')
+            ->whereHas('borrowingDetails', function ($query) use ($bookId) {
+                $query->where('book_id', $bookId);
+            })
+            ->exists();
+
+        if ($alreadyBorrowed) {
+            return back()->with('error', 'Anda sudah meminjam buku ini dan belum mengembalikannya.');
+        }
+
+        // 3. Find book & run safe update inside transaction
+        DB::beginTransaction();
+        try {
+            $book = Book::where('id', $bookId)->lockForUpdate()->first();
+            if (!$book) {
+                DB::rollBack();
+                return back()->with('error', 'Buku tidak ditemukan.');
+            }
+
+            if ($book->stok <= 0) {
+                DB::rollBack();
+                return back()->with('error', 'Stok buku ini kosong.');
+            }
+
+            // Create borrowing record (due date: default 7 days after borrowing)
+            $borrowing = Borrowing::create([
+                'member_id' => $memberId,
+                'borrow_date' => now()->toDateString(),
+                'return_date' => now()->addDays(7)->toDateString(), // acts as due_date
+                'status' => 'Dipinjam',
+                'user_id' => Auth::check() ? Auth::id() : null,
+            ]);
+
+            // Create borrowing details record
+            BorrowingDetail::create([
+                'borrowing_id' => $borrowing->id,
+                'book_id' => $book->id,
+                'qty' => 1,
+            ]);
+
+            // Safe stock decrement
+            $book->decrement('stok', 1);
+
+            DB::commit();
+
+            return redirect()->route('borrowings.index')->with('success', 'Buku berhasil dipinjam.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Terjadi kesalahan saat memproses peminjaman: ' . $e->getMessage());
+        }
+    }
 }

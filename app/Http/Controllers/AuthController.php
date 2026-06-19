@@ -66,9 +66,18 @@ class AuthController extends Controller
                     // For members in users table: find or create corresponding member record
                     $member = Member::where('email', $user->email)->first();
                     if (!$member) {
-                        $latestMember = Member::latest()->first();
-                        $latestId = $latestMember ? $latestMember->id + 1 : 1;
-                        $kodeAnggota = 'MBR' . str_pad($latestId, 3, '0', STR_PAD_LEFT);
+                        $latestId = 1;
+                        $latestMember = Member::orderBy('id', 'desc')->first();
+                        if ($latestMember) {
+                            $latestId = $latestMember->id + 1;
+                        }
+                        do {
+                            $kodeAnggota = 'MBR' . str_pad($latestId, 3, '0', STR_PAD_LEFT);
+                            $exists = Member::where('kode_anggota', $kodeAnggota)->exists();
+                            if ($exists) {
+                                $latestId++;
+                            }
+                        } while ($exists);
                         
                         $member = Member::create([
                             'kode_anggota' => $kodeAnggota,
@@ -151,10 +160,18 @@ class AuthController extends Controller
             'role' => 'member',
         ]);
 
-        // Generate unique member code (kode_anggota)
-        $latestMember = Member::latest()->first();
-        $latestId = $latestMember ? $latestMember->id + 1 : 1;
-        $kodeAnggota = 'MBR' . str_pad($latestId, 3, '0', STR_PAD_LEFT);
+        $latestId = 1;
+        $latestMember = Member::orderBy('id', 'desc')->first();
+        if ($latestMember) {
+            $latestId = $latestMember->id + 1;
+        }
+        do {
+            $kodeAnggota = 'MBR' . str_pad($latestId, 3, '0', STR_PAD_LEFT);
+            $exists = Member::where('kode_anggota', $kodeAnggota)->exists();
+            if ($exists) {
+                $latestId++;
+            }
+        } while ($exists);
 
         // Create matching Member record in members table
         $member = Member::create([

@@ -62,4 +62,5 @@ Route::middleware(['is_member'])->group(function () {
     Route::post('/borrowings', [BorrowingController::class, 'store'])->name('borrowings.store');
     Route::get('/borrowings/{id}', [BorrowingController::class, 'show'])->name('borrowings.show');
     Route::post('/borrowings/{id}/return', [BorrowingController::class, 'processReturn'])->name('borrowings.return');
+    Route::post('/borrow/{book_id}', [BorrowingController::class, 'borrowDirect'])->name('books.borrow');
 });

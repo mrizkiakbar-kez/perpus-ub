@@ -39,4 +39,45 @@ class RegistrationTest extends TestCase
             'nama' => 'Test User',
         ]);
     }
+
+    public function test_registration_does_not_conflict_with_existing_member_codes(): void
+    {
+        // 1. Manually insert a member with kode_anggota MBR001
+        \App\Models\Member::create([
+            'kode_anggota' => 'MBR001',
+            'nama' => 'Existing Member 1',
+            'email' => 'existing1@example.com',
+            'password' => 'password',
+            'telepon' => '-',
+            'alamat' => '-',
+            'role' => 'member',
+        ]);
+
+        // 2. Manually insert a member with kode_anggota MBR002
+        \App\Models\Member::create([
+            'kode_anggota' => 'MBR002',
+            'nama' => 'Existing Member 2',
+            'email' => 'existing2@example.com',
+            'password' => 'password',
+            'telepon' => '-',
+            'alamat' => '-',
+            'role' => 'member',
+        ]);
+
+        // 3. Register a new user
+        $response = $this->post('/register', [
+            'name' => 'New User',
+            'email' => 'new@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertRedirect(route('member.dashboard', absolute: false));
+
+        // 4. Assert new user was registered with kode_anggota MBR003
+        $this->assertDatabaseHas('members', [
+            'email' => 'new@example.com',
+            'kode_anggota' => 'MBR003',
+        ]);
+    }
 }

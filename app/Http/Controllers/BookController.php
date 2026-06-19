@@ -72,7 +72,24 @@ class BookController extends Controller
     public function show(Book $book)
     {
         $book->load('category');
-        return view('books.show', compact('book'));
+
+        $alreadyBorrowed = false;
+        $memberId = session('member_id');
+        if (!$memberId && Auth::check() && Auth::user()->role === 'member') {
+            $member = \App\Models\Member::where('email', Auth::user()->email)->first();
+            $memberId = $member?->id;
+        }
+
+        if ($memberId) {
+            $alreadyBorrowed = \App\Models\Borrowing::where('member_id', $memberId)
+                ->where('status', 'Dipinjam')
+                ->whereHas('borrowingDetails', function ($query) use ($book) {
+                    $query->where('book_id', $book->id);
+                })
+                ->exists();
+        }
+
+        return view('books.show', compact('book', 'alreadyBorrowed'));
     }
 
     public function edit(Book $book)

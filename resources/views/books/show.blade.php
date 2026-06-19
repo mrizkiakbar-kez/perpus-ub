@@ -122,33 +122,23 @@
         </div>
     </div>
 
-    @if(!Auth::check() && session()->has('member_id'))
+    @if(session()->has('member_id') || (Auth::check() && Auth::user()->role === 'member'))
         <div class="col-md-4">
             <div class="card border-primary">
                 <div class="card-header bg-transparent py-3 text-white fw-bold" style="border-color: var(--border-color) !important;">
                     <i class="bi bi-journal-plus text-primary"></i> Pinjam Buku Ini
                 </div>
                 <div class="card-body">
-                    @if($book->stok > 0)
-                        <form action="{{ route('borrowings.store') }}" method="POST">
+                    @if($alreadyBorrowed)
+                        <div class="alert alert-warning mb-0">
+                            <i class="bi bi-info-circle-fill"></i> Anda sudah meminjam buku ini dan belum mengembalikannya.
+                        </div>
+                    @elseif($book->stok > 0)
+                        <form action="{{ route('books.borrow', $book->id) }}" method="POST">
                             @csrf
-                            <input type="hidden" name="member_id" value="{{ session('member_id') }}">
-                            <input type="hidden" name="items[0][book_id]" value="{{ $book->id }}">
-                            <input type="hidden" name="items[0][qty]" value="1">
-
-                            <div class="mb-4">
-                                <label class="form-label" for="return_date">Batas Pengembalian</label>
-                                <input type="date" name="return_date" id="return_date" class="form-control @error('return_date') is-invalid @enderror" 
-                                    value="{{ \Carbon\Carbon::today()->addDays(7)->toDateString() }}" 
-                                    min="{{ \Carbon\Carbon::tomorrow()->toDateString() }}" required>
-                                <div class="form-text text-muted small mt-1">Batas peminjaman default adalah 7 hari.</div>
-                                @error('return_date')
-                                    <span class="invalid-feedback d-block">{{ $message }}</span>
-                                @enderror
-                            </div>
-
+                            <p class="text-muted small mb-3">Tekan tombol di bawah untuk meminjam buku ini secara instan. Jangka waktu peminjaman default adalah 7 hari.</p>
                             <button type="submit" class="btn btn-primary w-100 py-2">
-                                <i class="bi bi-journal-check"></i> Ajukan Peminjaman
+                                <i class="bi bi-journal-check"></i> Pinjam Buku Sekarang
                             </button>
                         </form>
                     @else

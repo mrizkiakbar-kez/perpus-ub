@@ -224,6 +224,20 @@
                                     <a href="{{ route('books.show', $book->id) }}" class="btn btn-sm btn-primary">
                                         <i class="bi bi-eye"></i> Detail
                                     </a>
+                                    @if(session()->has('member_id') || (Auth::check() && Auth::user()->role === 'member'))
+                                        @if($book->stok > 0)
+                                            <form action="{{ route('books.borrow', $book->id) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-success">
+                                                    <i class="bi bi-journal-plus"></i> Pinjam
+                                                </button>
+                                            </form>
+                                        @else
+                                            <button class="btn btn-sm btn-secondary" disabled title="Stok Habis">
+                                                <i class="bi bi-x-circle"></i> Habis
+                                            </button>
+                                        @endif
+                                    @endif
                                 @endif
                             </div>
                         </div>

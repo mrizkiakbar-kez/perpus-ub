@@ -33,19 +33,45 @@ class Borrowing extends Model
 
     public function isOverdue(): bool
     {
-        return now()->startOfDay()->gt(\Carbon\Carbon::parse($this->return_date));
+        $due = \Carbon\Carbon::parse($this->return_date)->startOfDay();
+        $actualReturnDate = $this->returned_at 
+            ? \Carbon\Carbon::parse($this->returned_at)->startOfDay() 
+            : now()->startOfDay();
+            
+        return $actualReturnDate->gt($due);
     }
 
     public function daysLate(): int
     {
         $due = \Carbon\Carbon::parse($this->return_date)->startOfDay();
-        $now = now()->startOfDay();
-        if ($now->lte($due)) return 0;
-        return $now->diffInDays($due);
+        
+        // If already returned, use returned_at date, otherwise use current date
+        $actualReturnDate = $this->returned_at 
+            ? \Carbon\Carbon::parse($this->returned_at)->startOfDay() 
+            : now()->startOfDay();
+            
+        if ($actualReturnDate->lte($due)) return 0;
+        return abs((int) $actualReturnDate->diffInDays($due));
     }
 
     public function calculatePenalty(int $perDay = 1000): int
     {
         return $this->daysLate() * $perDay;
+    }
+
+    public function displayStatus(): string
+    {
+        if ($this->status === 'Dikembalikan') {
+            if ($this->returned_at && \Carbon\Carbon::parse($this->returned_at)->startOfDay()->gt(\Carbon\Carbon::parse($this->return_date)->startOfDay())) {
+                return 'Terlambat (Dikembalikan)';
+            }
+            return 'Dikembalikan';
+        }
+        
+        if (now()->startOfDay()->gt(\Carbon\Carbon::parse($this->return_date)->startOfDay())) {
+            return 'Terlambat';
+        }
+        
+        return 'Dipinjam';
     }
 }

@@ -1,29 +1,61 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Profile') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-profile-information-form')
-                </div>
+@section('content')
+
+<h2 class="mb-4">Pengaturan Profil</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-transparent py-3 text-white fw-bold" style="border-color: var(--border-color) !important;">
+                <i class="bi bi-person-gear text-primary"></i> Ubah Data Diri & Keamanan
             </div>
+            <div class="card-body">
+                <form action="{{ route('member.profile.update') }}" method="POST">
+                    @csrf
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-password-form')
-                </div>
-            </div>
+                    <!-- Name Field -->
+                    <div class="mb-3">
+                        <label class="form-label" for="name">Nama Lengkap</label>
+                        <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror" 
+                            value="{{ old('name', $member->nama) }}" required>
+                        @error('name')
+                            <span class="invalid-feedback d-block">{{ $message }}</span>
+                        @enderror
+                    </div>
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.delete-user-form')
-                </div>
+                    <!-- Read-Only Email Field (Security restriction) -->
+                    <div class="mb-3">
+                        <label class="form-label" for="email">Alamat Email</label>
+                        <input type="email" id="email" class="form-control" value="{{ $member->email }}" readonly disabled>
+                        <div class="form-text text-muted small mt-1">Alamat email tidak dapat diubah demi alasan keamanan akun.</div>
+                    </div>
+
+                    <hr class="my-4" style="border-color: var(--border-color) !important;">
+
+                    <!-- Password Field -->
+                    <div class="mb-3">
+                        <label class="form-label" for="password">Password Baru</label>
+                        <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror">
+                        <div class="form-text text-muted small mt-1">Biarkan kosong jika tidak ingin mengubah password saat ini.</div>
+                        @error('password')
+                            <span class="invalid-feedback d-block">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <!-- Password Confirmation -->
+                    <div class="mb-4">
+                        <label class="form-label" for="password_confirmation">Konfirmasi Password Baru</label>
+                        <input type="password" name="password_confirmation" id="password_confirmation" class="form-control">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary py-2 px-4">
+                        <i class="bi bi-save"></i> Simpan Perubahan
+                    </button>
+                </form>
             </div>
         </div>
     </div>
-</x-app-layout>
+</div>
+
+@endsection

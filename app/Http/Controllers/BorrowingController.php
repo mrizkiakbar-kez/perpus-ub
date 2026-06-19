@@ -163,6 +163,12 @@ class BorrowingController extends Controller
             return redirect()->route('login')->with('error', 'Anda harus login sebagai anggota untuk meminjam buku.');
         }
 
+        // Validate duration input (allowed values: 3, 7, 14, 30 days)
+        $duration = (int) $request->input('duration', 7);
+        if (!in_array($duration, [3, 7, 14, 30])) {
+            $duration = 7;
+        }
+
         // 2. Prevent borrowing duplicate copy of the same book if already borrowed and not returned
         $alreadyBorrowed = Borrowing::where('member_id', $memberId)
             ->where('status', 'Dipinjam')
@@ -189,11 +195,11 @@ class BorrowingController extends Controller
                 return back()->with('error', 'Stok buku ini kosong.');
             }
 
-            // Create borrowing record (due date: default 7 days after borrowing)
+            // Create borrowing record (due date: based on selected duration)
             $borrowing = Borrowing::create([
                 'member_id' => $memberId,
                 'borrow_date' => now()->toDateString(),
-                'return_date' => now()->addDays(7)->toDateString(), // acts as due_date
+                'return_date' => now()->addDays($duration)->toDateString(), // acts as due_date
                 'status' => 'Dipinjam',
                 'user_id' => Auth::check() ? Auth::id() : null,
             ]);

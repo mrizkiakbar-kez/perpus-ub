@@ -13,4 +13,9 @@
         <i class="bi bi-journal-check"></i>
         <span>Peminjaman Saya</span>
     </a>
+
+    <a href="{{ route('member.profile') }}" class="{{ Route::currentRouteName() === 'member.profile' ? 'active' : '' }}">
+        <i class="bi bi-person-gear"></i>
+        <span>Pengaturan Profil</span>
+    </a>
 </nav>

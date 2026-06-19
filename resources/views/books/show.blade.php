@@ -136,7 +136,15 @@
                     @elseif($book->stok > 0)
                         <form action="{{ route('books.borrow', $book->id) }}" method="POST">
                             @csrf
-                            <p class="text-muted small mb-3">Tekan tombol di bawah untuk meminjam buku ini secara instan. Jangka waktu peminjaman default adalah 7 hari.</p>
+                            <div class="mb-3">
+                                <label for="duration" class="form-label">Durasi Peminjaman</label>
+                                <select name="duration" id="duration" class="form-select">
+                                    <option value="3">3 Hari</option>
+                                    <option value="7" selected>7 Hari</option>
+                                    <option value="14">14 Hari</option>
+                                    <option value="30">30 Hari</option>
+                                </select>
+                            </div>
                             <button type="submit" class="btn btn-primary w-100 py-2">
                                 <i class="bi bi-journal-check"></i> Pinjam Buku Sekarang
                             </button>

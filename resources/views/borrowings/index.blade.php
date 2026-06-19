@@ -47,8 +47,17 @@
                             </span>
                         </td>
                         <td>
-                            <span class="badge {{ $b->status === 'Dipinjam' ? 'bg-warning text-dark' : 'bg-success' }}">
-                                {{ $b->status }}
+                            @php
+                                $dispStatus = $b->displayStatus();
+                                $badgeClass = 'bg-warning text-dark';
+                                if ($dispStatus === 'Dikembalikan') {
+                                    $badgeClass = 'bg-success';
+                                } elseif (str_contains($dispStatus, 'Terlambat')) {
+                                    $badgeClass = 'bg-danger';
+                                }
+                            @endphp
+                            <span class="badge {{ $badgeClass }}">
+                                {{ $dispStatus }}
                             </span>
                         </td>
                         <td class="text-end pe-4">

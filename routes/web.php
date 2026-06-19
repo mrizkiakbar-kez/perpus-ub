@@ -63,4 +63,6 @@ Route::middleware(['is_member'])->group(function () {
     Route::get('/borrowings/{id}', [BorrowingController::class, 'show'])->name('borrowings.show');
     Route::post('/borrowings/{id}/return', [BorrowingController::class, 'processReturn'])->name('borrowings.return');
     Route::post('/borrow/{book_id}', [BorrowingController::class, 'borrowDirect'])->name('books.borrow');
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('member.profile');
+    Route::post('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('member.profile.update');
 });

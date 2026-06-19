@@ -2,59 +2,74 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
+use App\Models\Member;
 
 class ProfileController extends Controller
 {
-    /**
-     * Display the user's profile form.
-     */
-    public function edit(Request $request): View
+    public function edit()
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
-        ]);
-    }
-
-    /**
-     * Update the user's profile information.
-     */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $request->user()->fill($request->validated());
-
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        $memberId = session('member_id');
+        if (!$memberId && Auth::check() && Auth::user()->role === 'member') {
+            $member = Member::where('email', Auth::user()->email)->first();
+            $memberId = $member?->id;
         }
 
-        $request->user()->save();
+        if (!$memberId) {
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
+        }
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        $member = Member::findOrFail($memberId);
+        $user = User::where('email', $member->email)->first();
+
+        return view('profile.edit', compact('member', 'user'));
     }
 
-    /**
-     * Delete the user's account.
-     */
-    public function destroy(Request $request): RedirectResponse
+    public function update(Request $request)
     {
-        $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current_password'],
+        $memberId = session('member_id');
+        if (!$memberId && Auth::check() && Auth::user()->role === 'member') {
+            $member = Member::where('email', Auth::user()->email)->first();
+            $memberId = $member?->id;
+        }
+
+        if (!$memberId) {
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
+        }
+
+        $member = Member::findOrFail($memberId);
+        $user = User::where('email', $member->email)->first();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'password' => 'nullable|string|min:6|confirmed',
         ]);
 
-        $user = $request->user();
+        $name = $request->input('name');
+        $password = $request->input('password');
 
-        Auth::logout();
+        // Update Member
+        $member->nama = $name;
+        if ($password) {
+            $member->password = $password; // sets through setPasswordAttribute mutator
+        }
+        $member->save();
 
-        $user->delete();
+        // Update User
+        if ($user) {
+            $user->name = $name;
+            if ($password) {
+                $user->password = Hash::make($password);
+            }
+            $user->save();
+        }
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // Keep session synchronized
+        session(['member' => $member]);
 
-        return Redirect::to('/');
+        return redirect()->route('member.profile')->with('success', 'Profil Anda berhasil diperbarui.');
     }
 }

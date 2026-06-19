@@ -21,8 +21,17 @@
                     <div class="col-md-6">
                         <p class="text-muted small">Status</p>
                         <p>
-                            <span class="badge {{ $borrowing->status === 'Dipinjam' ? 'bg-warning text-dark' : 'bg-success' }}">
-                                {{ $borrowing->status }}
+                            @php
+                                $dispStatus = $borrowing->displayStatus();
+                                $badgeClass = 'bg-warning text-dark';
+                                if ($dispStatus === 'Dikembalikan') {
+                                    $badgeClass = 'bg-success';
+                                } elseif (str_contains($dispStatus, 'Terlambat')) {
+                                    $badgeClass = 'bg-danger';
+                                }
+                            @endphp
+                            <span class="badge {{ $badgeClass }}">
+                                {{ $dispStatus }}
                             </span>
                         </p>
                     </div>
@@ -34,7 +43,7 @@
                         <p class="text-white">{{ \Carbon\Carbon::parse($borrowing->borrow_date)->format('d M Y') }}</p>
                     </div>
                     <div class="col-md-6">
-                        <p class="text-muted small">Tanggal Kembali</p>
+                        <p class="text-muted small">Batas Kembali</p>
                         <p class="text-white">{{ \Carbon\Carbon::parse($borrowing->return_date)->format('d M Y') }}</p>
                     </div>
                 </div>
@@ -45,11 +54,18 @@
                 </div>
                 @endif
 
-                @if($borrowing->isOverdue() && $borrowing->status === 'Dipinjam')
-                <div class="alert alert-danger mb-3">
-                    <i class="bi bi-exclamation-triangle"></i> <strong>Telat {{ $borrowing->daysLate() }} hari</strong>
-                    <br>Denda yang harus dibayar: <strong>Rp {{ number_format($borrowing->calculatePenalty()) }}</strong>
-                </div>
+                @if($borrowing->isOverdue())
+                    @if($borrowing->status === 'Dipinjam')
+                        <div class="alert alert-danger mb-3">
+                            <i class="bi bi-exclamation-triangle"></i> <strong>Telat {{ $borrowing->daysLate() }} hari (Berjalan)</strong>
+                            <br>Denda sementara: <strong>Rp {{ number_format($borrowing->calculatePenalty()) }}</strong>
+                        </div>
+                    @else
+                        <div class="alert alert-danger mb-3">
+                            <i class="bi bi-exclamation-triangle"></i> <strong>Dikembalikan telat {{ $borrowing->daysLate() }} hari</strong>
+                            <br>Denda dikenakan: <strong>Rp {{ number_format($borrowing->calculatePenalty()) }}</strong>
+                        </div>
+                    @endif
                 @endif
 
                 <h5 class="mb-3 text-white">Item Peminjaman</h5>

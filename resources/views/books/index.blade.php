@@ -159,11 +159,40 @@
     @endif
 </div>
 
+@php
+    $indexRoute = Auth::check() && Auth::user()->role === 'admin' ? 'admin.books.index' : 'books.index';
+@endphp
+
+<!-- Prominent Search Bar -->
+<div class="mb-4">
+    <form action="{{ route($indexRoute) }}" method="GET">
+        @if(!empty($categoryId))
+            <input type="hidden" name="category" value="{{ $categoryId }}">
+        @endif
+        <div class="row g-2">
+            <div class="col-md-9 col-sm-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control bg-dark text-white border-secondary" 
+                           placeholder="Search books by title, author, or category..." value="{{ $q ?? '' }}">
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+                @if(!empty($q) || !empty($categoryId))
+                    <a href="{{ route($indexRoute) }}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-x-lg me-1"></i> Clear
+                    </a>
+                @endif
+            </div>
+        </div>
+    </form>
+</div>
+
 <!-- Category Tag Pills -->
 <div class="genre-filter-container">
-    @php
-        $indexRoute = Auth::check() && Auth::user()->role === 'admin' ? 'admin.books.index' : 'books.index';
-    @endphp
     <a href="{{ route($indexRoute, ['q' => $q]) }}" class="genre-pill {{ empty($categoryId) ? 'active' : '' }}">
         Semua Kategori
     </a>
@@ -241,20 +270,22 @@
                                         @endif
                                     @endif
                                 @endif
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
         @endforeach
+    </div>
+    
+    <div class="mt-4">
+        {{ $books->links() }}
     </div>
 @else
     <div class="card">
         @if(!empty($q) || !empty($categoryId))
             <div class="empty-state">
                 <i class="bi bi-search"></i>
-                <h5>Tidak ditemukan</h5>
-                <p class="text-muted mb-3">Tidak ada buku yang cocok dengan filter atau pencarian Anda.</p>
+                <h5>No books found matching your search.</h5>
+                <p class="text-muted mb-3">Silakan coba kata kunci lain atau bersihkan filter.</p>
                 <a href="{{ route($indexRoute) }}" class="btn btn-primary btn-sm">Lihat Semua Buku</a>
             </div>
         @else

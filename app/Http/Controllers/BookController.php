@@ -17,10 +17,15 @@ class BookController extends Controller
         $books = Book::with('category');
 
         if ($q) {
-            $books->where(function($builder) use ($q) {
-                $builder->where('judul', 'like', "%{$q}%")
-                        ->orWhere('penulis', 'like', "%{$q}%")
-                        ->orWhere('penerbit', 'like', "%{$q}%");
+            $sanitizedQ = strip_tags(trim($q));
+            $books->where(function($builder) use ($sanitizedQ) {
+                $builder->where('judul', 'like', "%{$sanitizedQ}%")
+                        ->orWhere('penulis', 'like', "%{$sanitizedQ}%")
+                        ->orWhere('penerbit', 'like', "%{$sanitizedQ}%")
+                        ->orWhere('kode_buku', 'like', "%{$sanitizedQ}%")
+                        ->orWhereHas('category', function($query) use ($sanitizedQ) {
+                            $query->where('name', 'like', "%{$sanitizedQ}%");
+                        });
             });
         }
 
@@ -28,7 +33,7 @@ class BookController extends Controller
             $books->where('category_id', $categoryId);
         }
 
-        $books = $books->latest()->get();
+        $books = $books->latest()->paginate(12)->withQueryString();
         $categories = Category::orderBy('name')->get();
 
         return view('books.index', compact('books', 'q', 'categories', 'categoryId'));

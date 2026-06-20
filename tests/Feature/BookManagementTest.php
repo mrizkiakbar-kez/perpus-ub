@@ -125,4 +125,64 @@ class BookManagementTest extends TestCase
         $responseAdminUrl = $this->actingAs($member)->get("/admin/books/{$book->id}");
         $responseAdminUrl->assertRedirect(route('member.dashboard'));
     }
+
+    public function test_member_can_search_books(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+        ]);
+        $category1 = Category::create([
+            'name' => 'Education',
+            'slug' => 'education',
+        ]);
+        $category2 = Category::create([
+            'name' => 'Fiction',
+            'slug' => 'fiction',
+        ]);
+
+        $book1 = \App\Models\Book::create([
+            'kode_buku' => 'B001',
+            'judul' => 'Learn Programming PHP',
+            'category_id' => $category1->id,
+            'penulis' => 'Taylor Otwell',
+            'penerbit' => 'Laravel Press',
+            'tahun_terbit' => 2021,
+            'stok' => 5,
+        ]);
+
+        $book2 = \App\Models\Book::create([
+            'kode_buku' => 'B002',
+            'judul' => 'Classic Novel',
+            'category_id' => $category2->id,
+            'penulis' => 'Jane Austen',
+            'penerbit' => 'Classic Pub',
+            'tahun_terbit' => 1990,
+            'stok' => 2,
+        ]);
+
+        // 1. Search by title keyword partial
+        $responseTitle = $this->actingAs($member)->get('/books?q=program');
+        $responseTitle->assertStatus(200);
+        $responseTitle->assertSee('Learn Programming PHP');
+        $responseTitle->assertDontSee('Classic Novel');
+
+        // 2. Search by author
+        $responseAuthor = $this->actingAs($member)->get('/books?q=Austen');
+        $responseAuthor->assertStatus(200);
+        $responseAuthor->assertSee('Classic Novel');
+        $responseAuthor->assertDontSee('Learn Programming PHP');
+
+        // 3. Search by category name
+        $responseCategory = $this->actingAs($member)->get('/books?q=Education');
+        $responseCategory->assertStatus(200);
+        $responseCategory->assertSee('Learn Programming PHP');
+        $responseCategory->assertDontSee('Classic Novel');
+
+        // 4. Search that returns empty
+        $responseEmpty = $this->actingAs($member)->get('/books?q=gibberishkeyword');
+        $responseEmpty->assertStatus(200);
+        $responseEmpty->assertSee('No books found matching your search.');
+        $responseEmpty->assertDontSee('Learn Programming PHP');
+        $responseEmpty->assertDontSee('Classic Novel');
+    }
 }

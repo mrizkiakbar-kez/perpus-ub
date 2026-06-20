@@ -40,8 +40,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin')->name('admin.')->group(
     Route::resource('members', MemberController::class);
     
     // Borrowing Management (Admin sees all)
-    Route::resource('borrowings', BorrowingController::class)->only(['index','create','store','show']);
-    Route::post('borrowings/{id}/return', [BorrowingController::class, 'returnBook'])->name('borrowings.return');
+    Route::resource('borrowings', BorrowingController::class)->only(['index','show']);
 
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports');

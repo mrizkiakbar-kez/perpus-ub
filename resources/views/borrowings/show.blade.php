@@ -81,9 +81,9 @@
             </div>
         </div>
 
-        @if($borrowing->status === 'borrowed')
+        @if($borrowing->status === 'borrowed' && !(Auth::check() && Auth::user()->role === 'admin'))
         <div class="mt-3">
-            <form action="{{ Auth::check() && Auth::user()->role === 'admin' ? route('admin.borrowings.return', $borrowing->id) : route('borrowings.return', $borrowing->id) }}" method="POST" onsubmit="return confirm('Yakin ingin memproses pengembalian?')">
+            <form action="{{ route('borrowings.return', $borrowing->id) }}" method="POST" onsubmit="return confirm('Yakin ingin memproses pengembalian?')">
                 @csrf
                 <button type="submit" class="btn btn-success">
                     <i class="bi bi-arrow-counterclockwise"></i> Pengembalian Buku

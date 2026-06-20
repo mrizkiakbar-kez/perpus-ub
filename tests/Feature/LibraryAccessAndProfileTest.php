@@ -186,4 +186,35 @@ class LibraryAccessAndProfileTest extends TestCase
         $response->assertSessionHasErrors(['password']);
         $this->assertEquals('Sophia Member', $this->memberRecord->fresh()->nama);
     }
+
+    public function test_admin_blocked_from_creating_or_returning_borrowings(): void
+    {
+        // Admin gets redirected to login on member-only routes due to IsMember middleware
+        $responseStore = $this->actingAs($this->adminUser)
+            ->post('/borrowings', [
+                'book_id' => $this->book->id,
+                'duration' => 7,
+            ]);
+        $responseStore->assertRedirect(route('login'));
+
+        $responseDirect = $this->actingAs($this->adminUser)
+            ->post("/borrow/{$this->book->id}", [
+                'duration' => 7,
+            ]);
+        $responseDirect->assertRedirect(route('login'));
+
+        // Setup borrowing
+        $borrowing = Borrowing::create([
+            'user_id' => $this->memberUser->id,
+            'book_id' => $this->book->id,
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'status' => 'borrowed',
+            'duration_days' => 7,
+        ]);
+
+        $responseReturn = $this->actingAs($this->adminUser)
+            ->post("/borrowings/{$borrowing->id}/return");
+        $responseReturn->assertRedirect(route('login'));
+    }
 }

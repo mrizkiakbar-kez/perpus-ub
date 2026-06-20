@@ -17,22 +17,63 @@ class BorrowingController extends Controller
         $filter = $request->get('filter', 'all');
 
         if (Auth::check() && Auth::user()->role === 'admin') {
-            $query = Borrowing::with(['user', 'book'])->latest();
+            $query = Borrowing::with(['user', 'book']);
             
-            if ($filter === 'borrowed') {
+            // Search borrowing records
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function($q) use ($search) {
+                    $q->whereHas('user', function($u) use ($search) {
+                        $u->where('name', 'like', '%' . $search . '%');
+                    })->orWhereHas('book', function($b) use ($search) {
+                        $b->where('judul', 'like', '%' . $search . '%');
+                    });
+                });
+            }
+
+            // Filter by Member Name
+            if ($request->filled('member_name')) {
+                $memberName = $request->get('member_name');
+                $query->whereHas('user', function($q) use ($memberName) {
+                    $q->where('name', 'like', '%' . $memberName . '%');
+                });
+            }
+
+            // Filter by Book Title
+            if ($request->filled('book_title')) {
+                $bookTitle = $request->get('book_title');
+                $query->whereHas('book', function($q) use ($bookTitle) {
+                    $q->where('judul', 'like', '%' . $bookTitle . '%');
+                });
+            }
+
+            // Filter by Status: Borrowed, Returned, Late
+            $status = $request->get('status', $filter);
+            if ($status === 'borrowed') {
                 $query->where('status', 'borrowed')
                       ->where('due_date', '>=', now()->toDateString());
-            } elseif ($filter === 'returned') {
+            } elseif ($status === 'returned') {
                 $query->where('status', 'returned');
-            } elseif ($filter === 'late') {
-                $query->where('status', 'late')
-                      ->orWhere(function($q) {
-                          $q->where('status', 'borrowed')
-                            ->where('due_date', '<', now()->toDateString());
+            } elseif ($status === 'late') {
+                $query->where(function($q) {
+                    $q->where('status', 'late')
+                      ->orWhere(function($sub) {
+                          $sub->where('status', 'borrowed')
+                              ->where('due_date', '<', now()->toDateString());
                       });
+                });
             }
-            
-            $borrowings = $query->paginate(20);
+
+            // Sort records
+            $sortBy = $request->get('sort_by', 'borrow_date');
+            $sortOrder = $request->get('sort_order', 'desc');
+            if (in_array($sortBy, ['borrow_date', 'due_date']) && in_array($sortOrder, ['asc', 'desc'])) {
+                $query->orderBy($sortBy, $sortOrder);
+            } else {
+                $query->orderBy('borrow_date', 'desc');
+            }
+
+            $borrowings = $query->paginate(20)->withQueryString();
         } else {
             // Get current user ID (Member)
             $userId = Auth::id();
@@ -56,7 +97,7 @@ class BorrowingController extends Controller
                 $query->where('status', 'late');
             }
             
-            $borrowings = $query->paginate(20);
+            $borrowings = $query->paginate(20)->withQueryString();
         }
 
         return view('borrowings.index', compact('borrowings', 'filter'));
@@ -64,11 +105,8 @@ class BorrowingController extends Controller
 
     public function create()
     {
-        // Admin creates borrowings manually
         if (Auth::check() && Auth::user()->role === 'admin') {
-            $members = Member::orderBy('nama')->get();
-            $books = Book::where('stok', '>', 0)->orderBy('judul')->get();
-            return view('borrowings.create', compact('members', 'books'));
+            abort(403, 'Aksi tidak diperbolehkan untuk Admin.');
         }
 
         return redirect()->route('books.index')->with('error', 'Silakan pilih buku yang ingin dipinjam dari katalog.');
@@ -76,71 +114,19 @@ class BorrowingController extends Controller
 
     public function store(Request $request)
     {
-        // Handle admin manual creation fallback or redirect
         if (Auth::check() && Auth::user()->role === 'admin') {
-            return $this->storeAdminBorrowing($request);
+            abort(403, 'Aksi tidak diperbolehkan untuk Admin.');
         }
 
         return $this->borrowDirect($request, $request->input('book_id'));
     }
 
-    private function storeAdminBorrowing(Request $request)
-    {
-        $data = $request->validate([
-            'member_id' => 'required|exists:members,id',
-            'book_id' => 'required|exists:books,id',
-            'duration' => 'required|integer|in:3,7,14,30'
-        ]);
-
-        $member = Member::findOrFail($data['member_id']);
-        $user = User::where('email', $member->email)->first();
-        if (!$user) {
-            return back()->withInput()->withErrors(['member_id' => 'Akun user untuk member ini tidak ditemukan.']);
-        }
-
-        $userId = $user->id;
-        $bookId = $data['book_id'];
-        $duration = (int) $data['duration'];
-
-        // Prevent borrowing duplicate copy
-        $alreadyBorrowed = Borrowing::where('user_id', $userId)
-            ->where('book_id', $bookId)
-            ->whereIn('status', ['borrowed', 'late'])
-            ->exists();
-
-        if ($alreadyBorrowed) {
-            return back()->withInput()->withErrors(['book_id' => 'Member ini sudah meminjam buku ini dan belum mengembalikannya.']);
-        }
-
-        DB::beginTransaction();
-        try {
-            $book = Book::where('id', $bookId)->lockForUpdate()->first();
-            if (!$book || $book->stok <= 0) {
-                DB::rollBack();
-                return back()->withInput()->withErrors(['book_id' => 'Stok buku ini kosong.']);
-            }
-
-            Borrowing::create([
-                'user_id' => $userId,
-                'book_id' => $bookId,
-                'borrow_date' => now()->toDateString(),
-                'due_date' => now()->addDays($duration)->toDateString(),
-                'status' => 'borrowed',
-                'duration_days' => $duration,
-            ]);
-
-            $book->decrement('stok', 1);
-            DB::commit();
-
-            return redirect()->route('admin.borrowings.index')->with('success', 'Peminjaman berhasil dicatat.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withInput()->withErrors(['error' => $e->getMessage()]);
-        }
-    }
-
     public function borrowDirect(Request $request, $bookId)
     {
+        if (Auth::check() && Auth::user()->role === 'admin') {
+            abort(403, 'Aksi tidak diperbolehkan untuk Admin.');
+        }
+
         $userId = Auth::id();
         if (!$userId && session()->has('member_id')) {
             $member = Member::find(session('member_id'));
@@ -222,19 +208,21 @@ class BorrowingController extends Controller
 
     public function returnBook(Request $request, $id)
     {
+        if (Auth::check() && Auth::user()->role === 'admin') {
+            abort(403, 'Aksi tidak diperbolehkan untuk Admin.');
+        }
+
         $borrowing = Borrowing::findOrFail($id);
 
         // Security check: members can only return their own books
-        if (!(Auth::check() && Auth::user()->role === 'admin')) {
-            $userId = Auth::id();
-            if (!$userId && session()->has('member_id')) {
-                $member = Member::find(session('member_id'));
-                $user = User::where('email', $member->email)->first();
-                $userId = $user?->id;
-            }
-            if ($borrowing->user_id !== $userId) {
-                abort(403, 'Aksi tidak diperbolehkan.');
-            }
+        $userId = Auth::id();
+        if (!$userId && session()->has('member_id')) {
+            $member = Member::find(session('member_id'));
+            $user = User::where('email', $member->email)->first();
+            $userId = $user?->id;
+        }
+        if ($borrowing->user_id !== $userId) {
+            abort(403, 'Aksi tidak diperbolehkan.');
         }
 
         if ($borrowing->status === 'returned' || $borrowing->status === 'late') {
@@ -249,7 +237,7 @@ class BorrowingController extends Controller
             $due = \Carbon\Carbon::parse($borrowing->due_date)->startOfDay();
 
             $isLate = $today->gt($due);
-            $daysLate = $isLate ? $today->diffInDays($due) : 0;
+            $daysLate = $isLate ? abs((int) $today->diffInDays($due)) : 0;
             $penalty = $daysLate * 1000;
 
             $borrowing->return_date = now()->toDateString();
@@ -262,8 +250,7 @@ class BorrowingController extends Controller
 
             DB::commit();
 
-            $route = Auth::check() && Auth::user()->role === 'admin' ? 'admin.borrowings.index' : 'borrowings.index';
-            return redirect()->route($route)->with('success', 'Buku berhasil dikembalikan.' . ($penalty > 0 ? " Denda terlambat: Rp " . number_format($penalty) : ""));
+            return redirect()->route('borrowings.index')->with('success', 'Buku berhasil dikembalikan.' . ($penalty > 0 ? " Denda terlambat: Rp " . number_format($penalty) : ""));
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal memproses pengembalian: ' . $e->getMessage());

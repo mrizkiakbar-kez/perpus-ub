@@ -143,6 +143,33 @@
         margin-right: 6px;
         font-size: 14px;
     }
+
+    /* CSS Grid Layout for Books */
+    .book-grid {
+        display: grid;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+        gap: 24px;
+        margin-top: 32px;
+        margin-bottom: 32px;
+    }
+
+    @media (min-width: 576px) {
+        .book-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 768px) {
+        .book-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 992px) {
+        .book-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -205,71 +232,75 @@
 </div>
 
 @if($books->count())
-    <div class="row g-4">
+    <div class="book-grid">
         @foreach($books as $book)
             @php
                 // Cycle through 5 gradient covers based on book ID
                 $gradNum = ($book->id % 5) + 1;
             @endphp
-            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                <div class="manga-card">
-                    
-                    <!-- Cover image/gradient container -->
-                    <div class="manga-cover cover-grad-{{ $gradNum }}">
+            <div class="manga-card">
+                
+                <!-- Cover image/gradient container -->
+                <div class="manga-cover cover-grad-{{ $gradNum }}">
+                    @if($book->cover_image)
+                        <img src="{{ asset('storage/' . $book->cover_image) }}" alt="{{ $book->judul }}" class="position-absolute inset-0 w-100 h-100" style="object-fit: cover; z-index: 0;">
+                    @else
                         <div class="manga-cover-pattern"></div>
-                        <div class="manga-cover-overlay"></div>
-                        <div class="manga-code-badge">{{ $book->kode_buku }}</div>
-                        <div class="manga-title-badge">{{ $book->category->name ?? 'Manga' }}</div>
-                        <h4 class="manga-cover-title">{{ $book->judul }}</h4>
-                    </div>
+                    @endif
+                    <div class="manga-cover-overlay" style="z-index: 1;"></div>
+                    <div class="manga-code-badge" style="z-index: 2;">{{ $book->kode_buku }}</div>
+                    <div class="manga-title-badge" style="z-index: 2;">{{ $book->category->name ?? 'Manga' }}</div>
+                    <h4 class="manga-cover-title" style="z-index: 2;">{{ $book->judul }}</h4>
+                </div>
 
-                    <!-- Details and actions -->
-                    <div class="manga-details d-flex flex-column">
-                        <div class="manga-meta mb-2">
-                            <i class="bi bi-person"></i>{{ $book->penulis }}
-                        </div>
-                        <div class="manga-meta mb-3">
-                            <i class="bi bi-building"></i>{{ $book->penerbit }}
-                        </div>
+                <!-- Details and actions -->
+                <div class="manga-details d-flex flex-column">
+                    <div class="manga-meta mb-2">
+                        <i class="bi bi-person"></i>{{ $book->penulis }}
+                    </div>
+                    <div class="manga-meta mb-3">
+                        <i class="bi bi-building"></i>{{ $book->penerbit }}
+                    </div>
+                    
+                    <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center" style="border-color: var(--border-color) !important;">
+                        <span class="badge {{ $book->stok > 0 ? 'bg-success' : 'bg-danger' }}">
+                            Stok: {{ $book->stok }}
+                        </span>
                         
-                        <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center" style="border-color: var(--border-color) !important;">
-                            <span class="badge {{ $book->stok > 0 ? 'bg-success' : 'bg-danger' }}">
-                                Stok: {{ $book->stok }}
-                            </span>
-                            
-                            <div class="d-flex gap-2">
-                                @if(Auth::check() && Auth::user()->role === 'admin')
-                                    <a href="{{ route('admin.books.show', $book->id) }}" class="btn btn-sm btn-primary" title="Detail">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a href="{{ route('admin.books.edit', $book->id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form action="{{ route('admin.books.destroy', $book->id) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus buku ini?')" title="Hapus">
-                                            <i class="bi bi-trash"></i>
+                        <div class="d-flex gap-2">
+                            @if(Auth::check() && Auth::user()->role === 'admin')
+                                <a href="{{ route('admin.books.show', $book->id) }}" class="btn btn-sm btn-primary" title="Detail">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ route('admin.books.edit', $book->id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="{{ route('admin.books.destroy', $book->id) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus buku ini?')" title="Hapus">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            @else
+                                @if(session()->has('member_id') || (Auth::check() && Auth::user()->role === 'member'))
+                                    @if($book->stok > 0)
+                                        <button type="button" class="btn btn-sm btn-success btn-borrow-trigger"
+                                                data-book-id="{{ $book->id }}"
+                                                data-title="{{ $book->judul }}"
+                                                data-author="{{ $book->penulis }}"
+                                                data-stock="{{ $book->stok }}"
+                                                data-grad="{{ $gradNum }}">
+                                            <i class="bi bi-journal-plus"></i> Pinjam
                                         </button>
-                                    </form>
-                                @else
-                                    @if(session()->has('member_id') || (Auth::check() && Auth::user()->role === 'member'))
-                                        @if($book->stok > 0)
-                                            <button type="button" class="btn btn-sm btn-success btn-borrow-trigger"
-                                                    data-book-id="{{ $book->id }}"
-                                                    data-title="{{ $book->judul }}"
-                                                    data-author="{{ $book->penulis }}"
-                                                    data-stock="{{ $book->stok }}"
-                                                    data-grad="{{ $gradNum }}">
-                                                <i class="bi bi-journal-plus"></i> Pinjam
-                                            </button>
-                                        @else
-                                            <button class="btn btn-sm btn-secondary" disabled title="Stok Habis">
-                                                <i class="bi bi-x-circle"></i> Habis
-                                            </button>
-                                        @endif
+                                    @else
+                                        <button class="btn btn-sm btn-secondary" disabled title="Stok Habis">
+                                            <i class="bi bi-x-circle"></i> Habis
+                                        </button>
                                     @endif
                                 @endif
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>

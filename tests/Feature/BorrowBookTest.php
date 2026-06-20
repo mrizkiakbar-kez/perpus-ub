@@ -22,19 +22,16 @@ class BorrowBookTest extends TestCase
     {
         parent::setUp();
 
-        // 1. Create a Category
         $category = Category::create([
             'name' => 'Fiction',
             'slug' => 'fiction'
         ]);
 
-        // 2. Create a User with member role
         $this->memberUser = User::factory()->create([
             'email' => 'sophia@example.com',
             'role' => 'member',
         ]);
 
-        // 3. Create a corresponding Member record
         $this->memberRecord = Member::create([
             'kode_anggota' => 'MBR001',
             'nama' => $this->memberUser->name,
@@ -45,7 +42,6 @@ class BorrowBookTest extends TestCase
             'role' => 'member',
         ]);
 
-        // 4. Create a Book
         $this->book = Book::create([
             'kode_buku' => 'B001',
             'judul' => 'Test Book',
@@ -68,19 +64,11 @@ class BorrowBookTest extends TestCase
         // Assert stock decremented
         $this->assertEquals(4, $this->book->fresh()->stok);
 
-        // Assert borrowing records exist
+        // Assert borrowing record exists
         $this->assertDatabaseHas('borrowings', [
-            'member_id' => $this->memberRecord->id,
-            'status' => 'Dipinjam',
-        ]);
-
-        $borrowing = Borrowing::where('member_id', $this->memberRecord->id)->first();
-        $this->assertNotNull($borrowing);
-
-        $this->assertDatabaseHas('borrowing_details', [
-            'borrowing_id' => $borrowing->id,
+            'user_id' => $this->memberUser->id,
             'book_id' => $this->book->id,
-            'qty' => 1,
+            'status' => 'borrowed',
         ]);
     }
 

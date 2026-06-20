@@ -7,7 +7,6 @@ use App\Models\Member;
 use App\Models\Book;
 use App\Models\Category;
 use App\Models\Borrowing;
-use App\Models\BorrowingDetail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -73,9 +72,9 @@ class LibraryAccessAndProfileTest extends TestCase
         $response->assertRedirect(route('borrowings.index'));
         $this->assertEquals(4, $this->book->fresh()->stok);
 
-        $borrowing = Borrowing::where('member_id', $this->memberRecord->id)->first();
+        $borrowing = Borrowing::where('user_id', $this->memberUser->id)->first();
         $this->assertNotNull($borrowing);
-        $this->assertEquals(now()->addDays(14)->toDateString(), $borrowing->return_date);
+        $this->assertEquals(now()->addDays(14)->toDateString(), $borrowing->due_date);
     }
 
     // --- 2. Return Book System & Late Penalty ---
@@ -83,16 +82,12 @@ class LibraryAccessAndProfileTest extends TestCase
     {
         // Setup existing borrowing
         $borrowing = Borrowing::create([
-            'member_id' => $this->memberRecord->id,
-            'borrow_date' => now()->toDateString(),
-            'return_date' => now()->addDays(7)->toDateString(),
-            'status' => 'Dipinjam',
-        ]);
-
-        BorrowingDetail::create([
-            'borrowing_id' => $borrowing->id,
+            'user_id' => $this->memberUser->id,
             'book_id' => $this->book->id,
-            'qty' => 1,
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'status' => 'borrowed',
+            'duration_days' => 7,
         ]);
 
         // Decrement stock initially to simulate active borrow
@@ -102,12 +97,12 @@ class LibraryAccessAndProfileTest extends TestCase
             ->withSession(['member_id' => $this->memberRecord->id])
             ->post("/borrowings/{$borrowing->id}/return");
 
-        $response->assertRedirect(route('borrowings.show', $borrowing->id));
+        $response->assertRedirect(route('borrowings.index'));
         $this->assertEquals(5, $this->book->fresh()->stok); // Stock incremented
 
         $borrowing = $borrowing->fresh();
-        $this->assertEquals('Dikembalikan', $borrowing->status);
-        $this->assertNotNull($borrowing->returned_at);
+        $this->assertEquals('returned', $borrowing->status);
+        $this->assertNotNull($borrowing->return_date);
         $this->assertEquals('Dikembalikan', $borrowing->displayStatus());
     }
 
@@ -115,16 +110,12 @@ class LibraryAccessAndProfileTest extends TestCase
     {
         // Setup past borrowing that was due 3 days ago
         $borrowing = Borrowing::create([
-            'member_id' => $this->memberRecord->id,
-            'borrow_date' => now()->subDays(10)->toDateString(),
-            'return_date' => now()->subDays(3)->toDateString(),
-            'status' => 'Dipinjam',
-        ]);
-
-        BorrowingDetail::create([
-            'borrowing_id' => $borrowing->id,
+            'user_id' => $this->memberUser->id,
             'book_id' => $this->book->id,
-            'qty' => 1,
+            'borrow_date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDays(3)->toDateString(),
+            'status' => 'borrowed',
+            'duration_days' => 7,
         ]);
 
         // Simulate return today
@@ -135,7 +126,7 @@ class LibraryAccessAndProfileTest extends TestCase
         $borrowing = $borrowing->fresh();
         $this->assertEquals('Terlambat (Dikembalikan)', $borrowing->displayStatus());
         $this->assertEquals(3, $borrowing->daysLate());
-        $this->assertEquals(3000, $borrowing->calculatePenalty());
+        $this->assertEquals(3000, $borrowing->late_penalty);
     }
 
     // --- 3. Admin Restrictions & Privacy ---

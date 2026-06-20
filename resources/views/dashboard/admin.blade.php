@@ -56,10 +56,19 @@
                 @foreach($recent as $r)
                     <div class="list-group-item d-flex justify-content-between align-items-start" style="background: transparent; border-color: var(--border-color);">
                         <div>
-                            <h6 class="mb-0">{{ $r->member->nama }}</h6>
+                            <h6 class="mb-0 text-white">{{ $r->user->name ?? 'User' }} <span class="text-muted fw-normal">meminjam</span> {{ $r->book->judul ?? 'Buku' }}</h6>
                             <small class="text-muted">{{ $r->created_at->format('d M Y - H:i') }}</small>
                         </div>
-                        <span class="badge {{ $r->status === 'Dipinjam' ? 'bg-warning' : 'bg-success' }}">{{ $r->status }}</span>
+                        @php
+                            $dispStatus = $r->displayStatus();
+                            $badgeClass = 'bg-warning text-dark';
+                            if ($dispStatus === 'Dikembalikan') {
+                                $badgeClass = 'bg-success';
+                            } elseif (str_contains($dispStatus, 'Terlambat')) {
+                                $badgeClass = 'bg-danger';
+                            }
+                        @endphp
+                        <span class="badge {{ $badgeClass }}">{{ $dispStatus }}</span>
                     </div>
                 @endforeach
             </div>

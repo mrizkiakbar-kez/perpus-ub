@@ -87,36 +87,46 @@
                                 <th>Anggota</th>
                                 <th>Buku</th>
                                 <th>Tgl Pinjam</th>
-                                <th>Batas Kembali</th>
+                                <th>Batas Kembali (Due)</th>
                                 <th>Tgl Pengembalian</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($history as $h)
+                                @php
+                                    $hMember = \App\Models\Member::where('email', $h->user->email)->first();
+                                @endphp
                                 <tr>
                                     <td>#{{ $h->id }}</td>
                                     <td>
-                                        <div><strong>{{ $h->member->nama }}</strong></div>
-                                        <small class="text-muted">{{ $h->member->kode_anggota }}</small>
+                                        <div><strong>{{ $h->user->name ?? 'User' }}</strong></div>
+                                        <small class="text-muted">{{ $hMember->kode_anggota ?? '-' }}</small>
                                     </td>
-                                    <td>
-                                        @foreach($h->borrowingDetails as $detail)
-                                            <div>{{ $detail->book->judul }} <span class="text-muted">({{ $detail->qty }})</span></div>
-                                        @endforeach
+                                    <td class="text-white">
+                                        {{ $h->book->judul ?? 'Buku' }}
                                     </td>
                                     <td>{{ \Carbon\Carbon::parse($h->borrow_date)->format('d M Y') }}</td>
-                                    <td>{{ \Carbon\Carbon::parse($h->return_date)->format('d M Y') }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($h->due_date)->format('d M Y') }}</td>
                                     <td>
-                                        @if($h->returned_at)
-                                            {{ \Carbon\Carbon::parse($h->returned_at)->format('d M Y H:i') }}
+                                        @if($h->return_date)
+                                            {{ \Carbon\Carbon::parse($h->return_date)->format('d M Y') }}
                                         @else
                                             <span class="text-muted">-</span>
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="badge {{ $h->status === 'Dipinjam' ? 'bg-warning text-dark' : 'bg-success' }}">
-                                            {{ $h->status }}
+                                        @php
+                                            $dispStatus = $h->displayStatus();
+                                            $badgeClass = 'bg-warning text-dark';
+                                            if ($dispStatus === 'Dikembalikan') {
+                                                $badgeClass = 'bg-success';
+                                            } elseif (str_contains($dispStatus, 'Terlambat')) {
+                                                $badgeClass = 'bg-danger';
+                                            }
+                                        @endphp
+                                        <span class="badge {{ $badgeClass }}">
+                                            {{ $dispStatus }}
                                         </span>
                                     </td>
                                 </tr>
@@ -147,18 +157,19 @@
                         </thead>
                         <tbody>
                             @foreach($overdueBorrowings as $ob)
+                                @php
+                                    $obMember = \App\Models\Member::where('email', $ob->user->email)->first();
+                                @endphp
                                 <tr>
                                     <td>#{{ $ob->id }}</td>
                                     <td>
-                                        <div><strong>{{ $ob->member->nama }}</strong></div>
-                                        <small class="text-muted">{{ $ob->member->telepon }}</small>
+                                        <div><strong>{{ $ob->user->name ?? 'User' }}</strong></div>
+                                        <small class="text-muted">{{ $obMember->telepon ?? '-' }}</small>
                                     </td>
-                                    <td>
-                                        @foreach($ob->borrowingDetails as $detail)
-                                            <div>{{ $detail->book->judul }}</div>
-                                        @endforeach
+                                    <td class="text-white">
+                                        {{ $ob->book->judul ?? 'Buku' }}
                                     </td>
-                                    <td class="text-danger">{{ \Carbon\Carbon::parse($ob->return_date)->format('d M Y') }}</td>
+                                    <td class="text-danger">{{ \Carbon\Carbon::parse($ob->due_date)->format('d M Y') }}</td>
                                     <td>
                                         <span class="badge bg-danger">{{ $ob->daysLate() }} Hari</span>
                                     </td>
@@ -201,18 +212,19 @@
         </thead>
         <tbody>
             @foreach($history as $h)
+                @php
+                    $hMember = \App\Models\Member::where('email', $h->user->email)->first();
+                @endphp
                 <tr>
                     <td>#{{ $h->id }}</td>
-                    <td>{{ $h->member->nama }} ({{ $h->member->kode_anggota }})</td>
+                    <td>{{ $h->user->name ?? 'User' }} ({{ $hMember->kode_anggota ?? '-' }})</td>
                     <td>
-                        @foreach($h->borrowingDetails as $detail)
-                            {{ $detail->book->judul }} ({{ $detail->qty }}),
-                        @endforeach
+                        {{ $h->book->judul ?? 'Buku' }}
                     </td>
                     <td>{{ $h->borrow_date }}</td>
-                    <td>{{ $h->return_date }}</td>
-                    <td>{{ $h->returned_at ?? '-' }}</td>
-                    <td>{{ $h->status }}</td>
+                    <td>{{ $h->due_date }}</td>
+                    <td>{{ $h->return_date ?? '-' }}</td>
+                    <td>{{ $h->displayStatus() }}</td>
                 </tr>
             @endforeach
         </tbody>

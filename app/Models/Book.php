@@ -18,9 +18,9 @@ class Book extends Model
         'cover_image'
     ];
 
-    public function borrowingDetails(): HasMany
+    public function borrowings(): HasMany
     {
-        return $this->hasMany(BorrowingDetail::class);
+        return $this->hasMany(Borrowing::class);
     }
 
     public function category()

@@ -9,33 +9,31 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Borrowing extends Model
 {
     protected $fillable = [
-        'member_id',
+        'user_id',
+        'book_id',
         'borrow_date',
+        'due_date',
         'return_date',
         'status',
-        'user_id'
+        'duration_days',
+        'late_penalty'
     ];
-
-    public function member(): BelongsTo
-    {
-        return $this->belongsTo(Member::class);
-    }
-
-    public function borrowingDetails(): HasMany
-    {
-        return $this->hasMany(BorrowingDetail::class);
-    }
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
+    }
+
+    public function book(): BelongsTo
+    {
+        return $this->belongsTo(Book::class);
     }
 
     public function isOverdue(): bool
     {
-        $due = \Carbon\Carbon::parse($this->return_date)->startOfDay();
-        $actualReturnDate = $this->returned_at 
-            ? \Carbon\Carbon::parse($this->returned_at)->startOfDay() 
+        $due = \Carbon\Carbon::parse($this->due_date)->startOfDay();
+        $actualReturnDate = $this->return_date 
+            ? \Carbon\Carbon::parse($this->return_date)->startOfDay() 
             : now()->startOfDay();
             
         return $actualReturnDate->gt($due);
@@ -43,11 +41,10 @@ class Borrowing extends Model
 
     public function daysLate(): int
     {
-        $due = \Carbon\Carbon::parse($this->return_date)->startOfDay();
+        $due = \Carbon\Carbon::parse($this->due_date)->startOfDay();
         
-        // If already returned, use returned_at date, otherwise use current date
-        $actualReturnDate = $this->returned_at 
-            ? \Carbon\Carbon::parse($this->returned_at)->startOfDay() 
+        $actualReturnDate = $this->return_date 
+            ? \Carbon\Carbon::parse($this->return_date)->startOfDay() 
             : now()->startOfDay();
             
         if ($actualReturnDate->lte($due)) return 0;
@@ -61,14 +58,15 @@ class Borrowing extends Model
 
     public function displayStatus(): string
     {
-        if ($this->status === 'Dikembalikan') {
-            if ($this->returned_at && \Carbon\Carbon::parse($this->returned_at)->startOfDay()->gt(\Carbon\Carbon::parse($this->return_date)->startOfDay())) {
-                return 'Terlambat (Dikembalikan)';
-            }
+        if ($this->status === 'returned') {
             return 'Dikembalikan';
         }
         
-        if (now()->startOfDay()->gt(\Carbon\Carbon::parse($this->return_date)->startOfDay())) {
+        if ($this->status === 'late') {
+            return 'Terlambat (Dikembalikan)';
+        }
+        
+        if ($this->status === 'borrowed' && now()->startOfDay()->gt(\Carbon\Carbon::parse($this->due_date)->startOfDay())) {
             return 'Terlambat';
         }
         

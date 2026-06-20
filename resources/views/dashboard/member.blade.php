@@ -68,20 +68,27 @@
                     <tbody>
                         @foreach($recent as $r)
                             <tr>
-                                <td>
-                                    @foreach($r->borrowingDetails as $detail)
-                                        <div>{{ $detail->book->judul }} <span class="text-muted">({{ $detail->qty }} pcs)</span></div>
-                                    @endforeach
+                                <td class="text-white">
+                                    {{ $r->book->judul ?? 'Buku' }}
                                 </td>
                                 <td>{{ \Carbon\Carbon::parse($r->borrow_date)->format('d M Y') }}</td>
                                 <td>
-                                    <span class="{{ $r->status === 'Dipinjam' && \Carbon\Carbon::parse($r->return_date)->isPast() ? 'text-danger fw-bold' : '' }}">
-                                        {{ \Carbon\Carbon::parse($r->return_date)->format('d M Y') }}
+                                    <span class="{{ $r->status === 'borrowed' && \Carbon\Carbon::parse($r->due_date)->isPast() ? 'text-danger fw-bold' : '' }}">
+                                        {{ \Carbon\Carbon::parse($r->due_date)->format('d M Y') }}
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="badge {{ $r->status === 'Dipinjam' ? 'bg-warning text-dark' : 'bg-success' }}">
-                                        {{ $r->status }}
+                                    @php
+                                        $dispStatus = $r->displayStatus();
+                                        $badgeClass = 'bg-warning text-dark';
+                                        if ($dispStatus === 'Dikembalikan') {
+                                            $badgeClass = 'bg-success';
+                                        } elseif (str_contains($dispStatus, 'Terlambat')) {
+                                            $badgeClass = 'bg-danger';
+                                        }
+                                    @endphp
+                                    <span class="badge {{ $badgeClass }}">
+                                        {{ $dispStatus }}
                                     </span>
                                 </td>
                             </tr>

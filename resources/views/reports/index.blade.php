@@ -60,10 +60,10 @@
     <div class="card-header bg-transparent border-bottom" style="border-color: var(--border-color) !important;">
         <ul class="nav nav-tabs card-header-tabs" id="reportTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active text-white" id="all-history-tab" data-bs-toggle="tab" data-bs-target="#all-history" type="button" role="tab" aria-controls="all-history" aria-selected="true">Semua Riwayat</button>
+                <button class="nav-link active" id="all-history-tab" data-bs-toggle="tab" data-bs-target="#all-history" type="button" role="tab" aria-controls="all-history" aria-selected="true">Semua Riwayat</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link text-white position-relative" id="overdue-tab" data-bs-toggle="tab" data-bs-target="#overdue" type="button" role="tab" aria-controls="overdue" aria-selected="false">
+                <button class="nav-link position-relative" id="overdue-tab" data-bs-toggle="tab" data-bs-target="#overdue" type="button" role="tab" aria-controls="overdue" aria-selected="false">
                     Daftar Terlambat
                     @if($overdueCount > 0)
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 8px;">
@@ -232,6 +232,37 @@
 </div>
 
 <style>
+    /* Custom Tab Styling for Reports */
+    .nav-tabs {
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    .nav-tabs .nav-link {
+        color: var(--text-secondary) !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        border-bottom: none !important;
+        padding: 10px 20px !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease-in-out !important;
+        border-top-left-radius: 6px !important;
+        border-top-right-radius: 6px !important;
+    }
+
+    .nav-tabs .nav-link:hover {
+        color: var(--text-primary) !important;
+        background: rgba(59, 130, 246, 0.05) !important;
+        border-color: var(--border-color) var(--border-color) transparent !important;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: var(--text-primary) !important;
+        background: var(--bg-dark) !important;
+        border-color: var(--border-color) var(--border-color) var(--bg-secondary) !important;
+        font-weight: 600 !important;
+        box-shadow: inset 0 3px 0 var(--primary-blue) !important;
+    }
+
     @media print {
         body {
             background: white !important;

@@ -210,6 +210,9 @@
                             
                             <div class="d-flex gap-2">
                                 @if(Auth::check() && Auth::user()->role === 'admin')
+                                    <a href="{{ route('admin.books.show', $book->id) }}" class="btn btn-sm btn-primary" title="Detail">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
                                     <a href="{{ route('admin.books.edit', $book->id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
@@ -221,9 +224,6 @@
                                         </button>
                                     </form>
                                 @else
-                                    <a href="{{ route('books.show', $book->id) }}" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-eye"></i> Detail
-                                    </a>
                                     @if(session()->has('member_id') || (Auth::check() && Auth::user()->role === 'member'))
                                         @if($book->stok > 0)
                                             <form action="{{ route('books.borrow', $book->id) }}" method="POST" class="d-inline">

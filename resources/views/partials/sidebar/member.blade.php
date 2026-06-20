@@ -4,7 +4,7 @@
         <span>Dashboard</span>
     </a>
 
-    <a href="{{ route('books.index') }}" class="{{ Route::currentRouteName() === 'books.index' || Route::currentRouteName() === 'books.show' ? 'active' : '' }}">
+    <a href="{{ route('books.index') }}" class="{{ Route::currentRouteName() === 'books.index' ? 'active' : '' }}">
         <i class="bi bi-book"></i>
         <span>Books</span>
     </a>

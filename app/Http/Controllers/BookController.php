@@ -50,6 +50,7 @@ class BookController extends Controller
             'penerbit' => 'required',
             'tahun_terbit' => 'required|numeric',
             'stok' => 'required|numeric',
+            'deskripsi' => 'nullable|string',
         ]);
 
         Book::create([
@@ -60,6 +61,7 @@ class BookController extends Controller
             'penerbit' => $request->penerbit,
             'tahun_terbit' => $request->tahun_terbit,
             'stok' => $request->stok,
+            'deskripsi' => $request->deskripsi,
         ]);
 
         $route = Auth::check() && Auth::user()->role === 'admin' ? 'admin.books.index' : 'books.index';
@@ -71,25 +73,18 @@ class BookController extends Controller
 
     public function show(Book $book)
     {
+        if (!(Auth::check() && Auth::user()->role === 'admin')) {
+            return redirect()->route('books.index')->with('error', 'Unauthorized access.');
+        }
+
         $book->load('category');
+        
+        $availableStock = $book->stok;
+        $activeBorrowingsCount = $book->borrowings()->whereIn('status', ['borrowed', 'late'])->count();
+        $totalStock = $book->stok + $activeBorrowingsCount;
+        $borrowCount = $book->borrowings()->count();
 
-        $alreadyBorrowed = false;
-        $memberId = session('member_id');
-        if (!$memberId && Auth::check() && Auth::user()->role === 'member') {
-            $member = \App\Models\Member::where('email', Auth::user()->email)->first();
-            $memberId = $member?->id;
-        }
-
-        if ($memberId) {
-            $alreadyBorrowed = \App\Models\Borrowing::where('member_id', $memberId)
-                ->where('status', 'Dipinjam')
-                ->whereHas('borrowingDetails', function ($query) use ($book) {
-                    $query->where('book_id', $book->id);
-                })
-                ->exists();
-        }
-
-        return view('books.show', compact('book', 'alreadyBorrowed'));
+        return view('books.show', compact('book', 'availableStock', 'totalStock', 'borrowCount'));
     }
 
     public function edit(Book $book)
@@ -108,6 +103,7 @@ class BookController extends Controller
             'penerbit' => 'required',
             'tahun_terbit' => 'required|numeric',
             'stok' => 'required|numeric',
+            'deskripsi' => 'nullable|string',
         ]);
 
         $book->update($request->all());

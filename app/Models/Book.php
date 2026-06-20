@@ -15,7 +15,8 @@ class Book extends Model
         'penerbit',
         'tahun_terbit',
         'stok',
-        'cover_image'
+        'cover_image',
+        'deskripsi'
     ];
 
     public function borrowings(): HasMany

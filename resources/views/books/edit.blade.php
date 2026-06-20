@@ -59,6 +59,12 @@
                         @error('stok')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">Deskripsi / Sinopsis</label>
+                        <textarea name="deskripsi" class="form-control @error('deskripsi') is-invalid @enderror" rows="4">{{ old('deskripsi', $book->deskripsi) }}</textarea>
+                        @error('deskripsi')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                    </div>
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save"></i> Update

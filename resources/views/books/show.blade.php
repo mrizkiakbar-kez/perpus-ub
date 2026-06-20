@@ -66,10 +66,22 @@
     }
 </style>
 
-<div class="mb-4">
-    <a href="{{ Auth::check() && Auth::user()->role === 'admin' ? route('admin.books.index') : route('books.index') }}" class="btn btn-outline-secondary btn-sm">
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <a href="{{ route('admin.books.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left"></i> Kembali ke Katalog
     </a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.books.edit', $book->id) }}" class="btn btn-warning btn-sm text-dark fw-bold">
+            <i class="bi bi-pencil"></i> Edit Buku
+        </a>
+        <form action="{{ route('admin.books.destroy', $book->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus buku ini?')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger btn-sm">
+                <i class="bi bi-trash"></i> Hapus
+            </button>
+        </form>
+    </div>
 </div>
 
 @php
@@ -83,7 +95,7 @@
             <div class="manga-detail-cover cover-grad-{{ $gradNum }}">
                 <div class="manga-cover-pattern"></div>
                 <div class="manga-cover-overlay"></div>
-                <div class="manga-code-badge">{{ $book->kode_buku }}</div>
+                <div class="manga-code-badge">ISBN / Kode: {{ $book->kode_buku }}</div>
                 <h2 class="manga-cover-title">{{ $book->judul }}</h2>
             </div>
 
@@ -95,12 +107,12 @@
                     </div>
                     <div>
                         <span class="badge {{ $book->stok > 0 ? 'bg-success' : 'bg-danger' }} p-2">
-                            {{ $book->stok > 0 ? 'Tersedia' : 'Kosong' }}
+                            {{ $book->stok > 0 ? 'Stok Tersedia' : 'Stok Kosong' }}
                         </span>
                     </div>
                 </div>
 
-                <div class="row g-4 manga-detail-meta">
+                <div class="row g-4 manga-detail-meta mb-4">
                     <div class="col-sm-6">
                         <p class="text-muted mb-1 small">Penulis</p>
                         <p class="fw-bold text-white h6"><i class="bi bi-person me-2"></i>{{ $book->penulis }}</p>
@@ -114,50 +126,58 @@
                         <p class="fw-bold text-white h6"><i class="bi bi-calendar me-2"></i>{{ $book->tahun_terbit }}</p>
                     </div>
                     <div class="col-sm-6">
-                        <p class="text-muted mb-1 small">Jumlah Stok</p>
-                        <p class="fw-bold text-white h6"><i class="bi bi-layers me-2"></i>{{ $book->stok }} exemplar</p>
+                        <p class="text-muted mb-1 small">Kode Buku / ISBN</p>
+                        <p class="fw-bold text-white h6"><i class="bi bi-upc-scan me-2"></i>{{ $book->kode_buku }}</p>
                     </div>
+                </div>
+
+                <div class="border-top pt-4" style="border-color: var(--border-color) !important;">
+                    <h5 class="text-white mb-2">Deskripsi / Sinopsis</h5>
+                    <p class="text-secondary" style="white-space: pre-line; line-height: 1.7;">
+                        {{ $book->deskripsi ?? 'Sinopsis tidak tersedia untuk buku ini.' }}
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 
-    @if(session()->has('member_id') || (Auth::check() && Auth::user()->role === 'member'))
-        <div class="col-md-4">
-            <div class="card border-primary">
-                <div class="card-header bg-transparent py-3 text-white fw-bold" style="border-color: var(--border-color) !important;">
-                    <i class="bi bi-journal-plus text-primary"></i> Pinjam Buku Ini
+    <!-- Right Sidebar Statistics Card -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-transparent py-3 text-white fw-bold" style="border-color: var(--border-color) !important;">
+                <i class="bi bi-bar-chart-fill text-primary"></i> Statistik Buku
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Total Stok</span>
+                    <span class="badge bg-secondary text-white fs-6">{{ $totalStock }}</span>
                 </div>
-                <div class="card-body">
-                    @if($alreadyBorrowed)
-                        <div class="alert alert-warning mb-0">
-                            <i class="bi bi-info-circle-fill"></i> Anda sudah meminjam buku ini dan belum mengembalikannya.
-                        </div>
-                    @elseif($book->stok > 0)
-                        <form action="{{ route('books.borrow', $book->id) }}" method="POST">
-                            @csrf
-                            <div class="mb-3">
-                                <label for="duration" class="form-label">Durasi Peminjaman</label>
-                                <select name="duration" id="duration" class="form-select">
-                                    <option value="3">3 Hari</option>
-                                    <option value="7" selected>7 Hari</option>
-                                    <option value="14">14 Hari</option>
-                                    <option value="30">30 Hari</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100 py-2">
-                                <i class="bi bi-journal-check"></i> Pinjam Buku Sekarang
-                            </button>
-                        </form>
-                    @else
-                        <div class="alert alert-danger mb-0">
-                            <i class="bi bi-exclamation-triangle-fill"></i> Stok buku saat ini sedang kosong, sehingga tidak dapat dipinjam.
-                        </div>
-                    @endif
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Stok Tersedia (Available)</span>
+                    <span class="badge bg-success text-white fs-6">{{ $availableStock }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Sedang Dipinjam</span>
+                    <span class="badge bg-warning text-dark fs-6">{{ $totalStock - $availableStock }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Total Kali Dipinjam</span>
+                    <span class="badge bg-info text-dark fs-6">{{ $borrowCount }}</span>
+                </div>
+                
+                <div class="border-top mt-4 pt-3 text-muted small" style="border-color: var(--border-color) !important;">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Ditambahkan pada:</span>
+                        <span>{{ $book->created_at ? $book->created_at->format('d M Y H:i') : '-' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Terakhir diperbarui:</span>
+                        <span>{{ $book->updated_at ? $book->updated_at->format('d M Y H:i') : '-' }}</span>
+                    </div>
                 </div>
             </div>
         </div>
-    @endif
+    </div>
 </div>
 
 @endsection

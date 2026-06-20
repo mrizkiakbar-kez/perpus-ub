@@ -217,4 +217,130 @@ class LibraryAccessAndProfileTest extends TestCase
             ->post("/borrowings/{$borrowing->id}/return");
         $responseReturn->assertRedirect(route('login'));
     }
+
+    // --- 5. Remove Member Feature Tests ---
+    public function test_admin_can_view_member_details(): void
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->get("/admin/members/{$this->memberRecord->id}");
+
+        $response->assertStatus(200);
+        $response->assertSee($this->memberRecord->nama);
+        $response->assertSee('Riwayat Peminjaman Buku');
+    }
+
+    public function test_admin_can_delete_member_with_no_borrowings(): void
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->delete("/admin/members/{$this->memberRecord->id}");
+
+        $response->assertRedirect(route('admin.members.index'));
+        $response->assertSessionHas('success', 'Anggota berhasil dihapus.');
+
+        $this->assertDatabaseMissing('members', ['id' => $this->memberRecord->id]);
+        $this->assertDatabaseMissing('users', ['id' => $this->memberUser->id]);
+    }
+
+    public function test_admin_cannot_delete_member_with_active_borrowings(): void
+    {
+        // Setup borrowing for member
+        Borrowing::create([
+            'user_id' => $this->memberUser->id,
+            'book_id' => $this->book->id,
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'status' => 'borrowed',
+            'duration_days' => 7,
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->delete("/admin/members/{$this->memberRecord->id}");
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'This member cannot be removed because they still have active borrowing records.');
+
+        $this->assertDatabaseHas('members', ['id' => $this->memberRecord->id]);
+        $this->assertDatabaseHas('users', ['id' => $this->memberUser->id]);
+    }
+
+    public function test_admin_cannot_delete_member_with_overdue_borrowings(): void
+    {
+        // Setup overdue borrowing for member
+        Borrowing::create([
+            'user_id' => $this->memberUser->id,
+            'book_id' => $this->book->id,
+            'borrow_date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDays(3)->toDateString(),
+            'status' => 'borrowed',
+            'duration_days' => 7,
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->delete("/admin/members/{$this->memberRecord->id}");
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'This member cannot be removed because they still have active borrowing records.');
+
+        $this->assertDatabaseHas('members', ['id' => $this->memberRecord->id]);
+        $this->assertDatabaseHas('users', ['id' => $this->memberUser->id]);
+    }
+
+    public function test_admin_cannot_delete_themselves(): void
+    {
+        // Setup admin member record with matching email
+        $adminMember = Member::create([
+            'kode_anggota' => 'MBR999',
+            'nama' => $this->adminUser->name,
+            'email' => $this->adminUser->email,
+            'password' => 'password',
+            'telepon' => '0812345678',
+            'alamat' => 'Malang',
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->delete("/admin/members/{$adminMember->id}");
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'Tidak dapat menghapus Admin yang sedang login.');
+
+        $this->assertDatabaseHas('members', ['id' => $adminMember->id]);
+        $this->assertDatabaseHas('users', ['id' => $this->adminUser->id]);
+    }
+
+    public function test_admin_cannot_delete_another_admin(): void
+    {
+        $otherAdminUser = User::factory()->create([
+            'email' => 'otheradmin@example.com',
+            'role' => 'admin',
+        ]);
+
+        $otherAdminMember = Member::create([
+            'kode_anggota' => 'MBR998',
+            'nama' => 'Other Admin',
+            'email' => 'otheradmin@example.com',
+            'password' => 'password',
+            'telepon' => '0812345678',
+            'alamat' => 'Malang',
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->delete("/admin/members/{$otherAdminMember->id}");
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'Tidak dapat menghapus akun Admin.');
+
+        $this->assertDatabaseHas('members', ['id' => $otherAdminMember->id]);
+        $this->assertDatabaseHas('users', ['id' => $otherAdminUser->id]);
+    }
+
+    public function test_member_cannot_delete_any_member_and_gets_403(): void
+    {
+        $response = $this->actingAs($this->memberUser)
+            ->delete("/admin/members/{$this->memberRecord->id}");
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('members', ['id' => $this->memberRecord->id]);
+    }
 }

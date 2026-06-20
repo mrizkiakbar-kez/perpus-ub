@@ -20,6 +20,10 @@ class IsAdmin
             return $next($request);
         }
 
+        if ($request->routeIs('admin.members.destroy')) {
+            abort(403, 'Unauthorized access.');
+        }
+
         return redirect()->route('member.dashboard')->with('error', 'Anda tidak memiliki akses ke halaman ini.');
     }
 }

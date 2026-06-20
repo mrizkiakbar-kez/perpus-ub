@@ -226,12 +226,14 @@
                                 @else
                                     @if(session()->has('member_id') || (Auth::check() && Auth::user()->role === 'member'))
                                         @if($book->stok > 0)
-                                            <form action="{{ route('books.borrow', $book->id) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                <button type="submit" class="btn btn-sm btn-success">
-                                                    <i class="bi bi-journal-plus"></i> Pinjam
-                                                </button>
-                                            </form>
+                                            <button type="button" class="btn btn-sm btn-success btn-borrow-trigger"
+                                                    data-book-id="{{ $book->id }}"
+                                                    data-title="{{ $book->judul }}"
+                                                    data-author="{{ $book->penulis }}"
+                                                    data-stock="{{ $book->stok }}"
+                                                    data-grad="{{ $gradNum }}">
+                                                <i class="bi bi-journal-plus"></i> Pinjam
+                                            </button>
                                         @else
                                             <button class="btn btn-sm btn-secondary" disabled title="Stok Habis">
                                                 <i class="bi bi-x-circle"></i> Habis
@@ -267,5 +269,115 @@
         @endif
     </div>
 @endif
+
+<!-- Borrow Confirmation Modal -->
+<div class="modal fade" id="borrowModal" tabindex="-1" aria-labelledby="borrowModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-white border-0" style="background-color: var(--bg-secondary) !important; border: 1px solid var(--border-color) !important;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="borrowModalLabel"><i class="bi bi-journal-plus text-primary me-2"></i> Konfirmasi Peminjaman</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3">
+                <div class="d-flex gap-3 mb-4 align-items-center">
+                    <!-- Mini Cover -->
+                    <div id="modal-cover" class="cover-grad-1" style="width: 70px; height: 100px; border-radius: 6px; position: relative; overflow: hidden; border: 1px solid var(--border-color); flex-shrink: 0;">
+                        <div style="position: absolute; inset: 0; background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0); background-size: 4px 4px;"></div>
+                        <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); z-index: 1;"></div>
+                    </div>
+                    <div>
+                        <h4 id="modal-title" class="fw-bold mb-1 text-white">Judul Buku</h4>
+                        <p id="modal-author" class="text-muted mb-2"><i class="bi bi-person me-1"></i>Penulis</p>
+                        <span class="badge bg-success" id="modal-stock">Stok: 5</span>
+                    </div>
+                </div>
+
+                <!-- Borrow info form -->
+                <form id="borrowForm" action="" method="POST">
+                    @csrf
+                    <div class="mb-3">
+                        <label for="modal-duration" class="form-label text-muted small mb-1">Durasi Peminjaman</label>
+                        <select name="duration" id="modal-duration" class="form-select bg-dark text-white border-0" style="border: 1px solid var(--border-color) !important;">
+                            <option value="3">3 Hari</option>
+                            <option value="7" selected>7 Hari</option>
+                            <option value="14">14 Hari</option>
+                            <option value="30">30 Hari</option>
+                        </select>
+                    </div>
+
+                    <div class="bg-dark p-3 rounded mb-3" style="border: 1px solid var(--border-color); background-color: var(--bg-dark) !important;">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Tanggal Pinjam:</span>
+                            <span class="text-white fw-medium" id="modal-borrow-date">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small">Batas Kembali (Due Date):</span>
+                            <span class="text-warning fw-bold" id="modal-due-date">-</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end mt-4">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4">Confirm Borrow</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    if (typeof bootstrap !== 'undefined') {
+        const borrowModal = new bootstrap.Modal(document.getElementById('borrowModal'));
+        
+        $('.btn-borrow-trigger').on('click', function() {
+            const bookId = $(this).data('book-id');
+            const title = $(this).data('title');
+            const author = $(this).data('author');
+            const stock = $(this).data('stock');
+            const grad = $(this).data('grad');
+            
+            // Populate modal data
+            $('#modal-title').text(title);
+            $('#modal-author').html('<i class="bi bi-person me-1"></i>' + author);
+            $('#modal-stock').text('Stok Tersedia: ' + stock);
+            
+            // Update cover gradient class
+            $('#modal-cover').attr('class', 'cover-grad-' + grad);
+            
+            // Set form action dynamically
+            const actionUrl = '/borrow/' + bookId;
+            $('#borrowForm').attr('action', actionUrl);
+            
+            // Populate dates
+            updateDates();
+            
+            // Show modal
+            borrowModal.show();
+        });
+
+        $('#modal-duration').on('change', function() {
+            updateDates();
+        });
+
+        function updateDates() {
+            const duration = parseInt($('#modal-duration').val());
+            const today = new Date();
+            
+            // Format today: d M Y
+            const options = { day: '2-digit', month: 'short', year: 'numeric' };
+            const todayStr = today.toLocaleDateString('id-ID', options);
+            $('#modal-borrow-date').text(todayStr);
+            
+            // Calculate due date
+            const dueDate = new Date();
+            dueDate.setDate(today.getDate() + duration);
+            const dueStr = dueDate.toLocaleDateString('id-ID', options);
+            $('#modal-due-date').text(dueStr);
+        }
+    }
+});
+</script>
 
 @endsection

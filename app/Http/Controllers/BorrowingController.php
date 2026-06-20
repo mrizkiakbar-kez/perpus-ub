@@ -179,7 +179,7 @@ class BorrowingController extends Controller
 
             DB::commit();
 
-            return redirect()->route('borrowings.index')->with('success', 'Buku berhasil dipinjam.');
+            return redirect()->route('borrowings.index')->with('success', 'Your book has been borrowed successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Terjadi kesalahan saat memproses peminjaman: ' . $e->getMessage());

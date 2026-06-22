@@ -7,56 +7,117 @@
         <h2>Laporan & Analitik</h2>
         <p class="text-muted mb-0">Tinjau seluruh riwayat peminjaman dan kelola keterlambatan pengembalian.</p>
     </div>
-    <button onclick="window.print()" class="btn btn-outline-secondary d-print-none">
-        <i class="bi bi-printer"></i> Cetak Laporan
-    </button>
-</div>
-
-<div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <p class="text-muted small mb-2">Total Transaksi</p>
-                        <h3>{{ $totalBorrowings ?? 0 }}</h3>
-                    </div>
-                    <i class="bi bi-tags-fill" style="font-size: 32px; color: var(--primary-blue); opacity: 0.3;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="card text-warning">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <p class="text-muted small mb-2">Sedang Dipinjam</p>
-                        <h3>{{ $activeBorrowings ?? 0 }}</h3>
-                    </div>
-                    <i class="bi bi-hourglass-split" style="font-size: 32px; color: var(--accent-warning); opacity: 0.3;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="card border-{{ $overdueCount > 0 ? 'danger' : 'color' }}">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <p class="text-muted small mb-2">Terlambat</p>
-                        <h3 class="{{ $overdueCount > 0 ? 'text-danger' : '' }}">{{ $overdueCount ?? 0 }}</h3>
-                    </div>
-                    <i class="bi bi-exclamation-octagon" style="font-size: 32px; color: {{ $overdueCount > 0 ? 'var(--accent-danger)' : 'var(--text-muted)' }}; opacity: 0.3;"></i>
-                </div>
-            </div>
-        </div>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.reports.print', request()->query()) }}" target="_blank" class="btn btn-outline-secondary">
+            <i class="bi bi-printer me-1"></i> Print Report
+        </a>
+        <a href="{{ route('admin.reports.pdf', request()->query()) }}" class="btn btn-danger">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
+        </a>
     </div>
 </div>
 
-<div class="card mb-4 d-print-none">
+<!-- Search & Filters -->
+<form method="GET" action="{{ route('admin.reports') }}" class="mb-4 bg-secondary p-3 rounded border border-secondary" style="background-color: var(--bg-secondary) !important; border-color: var(--border-color) !important;">
+    <div class="row g-3">
+        <!-- Search General -->
+        <div class="col-md-3">
+            <label class="form-label text-muted small mb-1">Search</label>
+            <div class="input-group">
+                <span class="input-group-text bg-dark border-0 text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control bg-dark text-white border-0" placeholder="Title or member name..." value="{{ request('search') }}">
+            </div>
+        </div>
+
+        <!-- Filter Preset -->
+        <div class="col-md-3">
+            <label class="form-label text-muted small mb-1">Date Preset</label>
+            <select name="filter_type" id="filter_type" class="form-select bg-dark text-white border-0">
+                <option value="all" {{ request('filter_type', 'all') === 'all' ? 'selected' : '' }}>All Time</option>
+                <option value="today" {{ request('filter_type') === 'today' ? 'selected' : '' }}>Today</option>
+                <option value="week" {{ request('filter_type') === 'week' ? 'selected' : '' }}>This Week</option>
+                <option value="month" {{ request('filter_type') === 'month' ? 'selected' : '' }}>This Month</option>
+                <option value="year" {{ request('filter_type') === 'year' ? 'selected' : '' }}>This Year</option>
+                <option value="custom" {{ request('filter_type') === 'custom' ? 'selected' : '' }}>Custom Date Range</option>
+            </select>
+        </div>
+
+        <!-- Custom Start Date -->
+        <div class="col-md-3">
+            <label class="form-label text-muted small mb-1">Start Date</label>
+            <input type="date" name="start_date" id="start_date" class="form-control bg-dark text-white border-0" value="{{ request('start_date') }}">
+        </div>
+
+        <!-- Custom End Date -->
+        <div class="col-md-3">
+            <label class="form-label text-muted small mb-1">End Date</label>
+            <input type="date" name="end_date" id="end_date" class="form-control bg-dark text-white border-0" value="{{ request('end_date') }}">
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <div>
+            <!-- Refresh Button -->
+            <button type="button" onclick="window.location.reload();" class="btn btn-outline-secondary btn-sm" title="Refresh Page">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.reports') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x-lg me-1"></i> Reset
+            </a>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-funnel me-1"></i> Apply Filter
+            </button>
+        </div>
+    </div>
+</form>
+
+<!-- Statistics Cards -->
+<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-3 mb-4">
+    <div class="col">
+        <div class="card h-100" style="background-color: var(--bg-secondary) !important; border: 1px solid var(--border-color) !important;">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Total Borrowed</p>
+                <h4 class="fw-bold text-white mb-0">{{ $totalBorrowed }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100" style="background-color: var(--bg-secondary) !important; border: 1px solid var(--border-color) !important;">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Total Returned</p>
+                <h4 class="fw-bold text-success mb-0">{{ $totalReturned }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100" style="background-color: var(--bg-secondary) !important; border: 1px solid var(--border-color) !important;">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Currently Borrowed</p>
+                <h4 class="fw-bold text-warning mb-0">{{ $totalCurrentlyBorrowed }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100" style="background-color: var(--bg-secondary) !important; border: 1px solid var(--border-color) !important;">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Total Overdue</p>
+                <h4 class="fw-bold text-danger mb-0">{{ $totalOverdue }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100" style="background-color: var(--bg-secondary) !important; border: 1px solid var(--border-color) !important;">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Active Members</p>
+                <h4 class="fw-bold text-info mb-0">{{ $totalMembersBorrowing }}</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4 d-print-none" style="background-color: var(--bg-secondary) !important; border: 1px solid var(--border-color) !important;">
     <div class="card-header bg-transparent border-bottom" style="border-color: var(--border-color) !important;">
         <ul class="nav nav-tabs card-header-tabs" id="reportTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -89,6 +150,7 @@
                                 <th>Tgl Pinjam</th>
                                 <th>Batas Kembali (Due)</th>
                                 <th>Tgl Pengembalian</th>
+                                <th>Durasi</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -115,6 +177,7 @@
                                             <span class="text-muted">-</span>
                                         @endif
                                     </td>
+                                    <td>{{ $h->duration_days }} Hari</td>
                                     <td>
                                         @php
                                             $dispStatus = $h->displayStatus();
@@ -133,6 +196,9 @@
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-3">
+                    {{ $history->links() }}
                 </div>
             @else
                 <p class="text-muted mb-0">Belum ada riwayat peminjaman.</p>
@@ -195,42 +261,6 @@
     </div>
 </div>
 
-<!-- PRINT ONLY VIEW -->
-<div class="d-none d-print-block">
-    <h4 class="mb-3">Daftar Peminjaman Buku</h4>
-    <table class="table table-bordered table-sm text-dark" style="color: black !important;">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Anggota</th>
-                <th>Buku</th>
-                <th>Tgl Pinjam</th>
-                <th>Batas Kembali</th>
-                <th>Tgl Kembali</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($history as $h)
-                @php
-                    $hMember = \App\Models\Member::where('email', $h->user->email)->first();
-                @endphp
-                <tr>
-                    <td>#{{ $h->id }}</td>
-                    <td>{{ $h->user->name ?? 'User' }} ({{ $hMember->kode_anggota ?? '-' }})</td>
-                    <td>
-                        {{ $h->book->judul ?? 'Buku' }}
-                    </td>
-                    <td>{{ $h->borrow_date }}</td>
-                    <td>{{ $h->due_date }}</td>
-                    <td>{{ $h->return_date ?? '-' }}</td>
-                    <td>{{ $h->displayStatus() }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-</div>
-
 <style>
     /* Custom Tab Styling for Reports */
     .nav-tabs {
@@ -262,24 +292,27 @@
         font-weight: 600 !important;
         box-shadow: inset 0 3px 0 var(--primary-blue) !important;
     }
+</style>
 
-    @media print {
-        body {
-            background: white !important;
-            color: black !important;
-        }
-        .card, .table {
-            background: white !important;
-            color: black !important;
-            border-color: #ccc !important;
-        }
-        .main-wrapper, .sidebar, .navbar-section, .d-print-none {
-            display: none !important;
-        }
-        .page-content {
-            padding: 0 !important;
+<script>
+$(document).ready(function() {
+    $('#filter_type').on('change', function() {
+        $(this).closest('form').submit();
+    });
+    
+    function toggleDateInputs() {
+        if ($('#filter_type').val() === 'custom') {
+            $('#start_date').prop('disabled', false);
+            $('#end_date').prop('disabled', false);
+        } else {
+            $('#start_date').prop('disabled', true);
+            $('#end_date').prop('disabled', true);
         }
     }
-</style>
+    
+    toggleDateInputs();
+    $('#filter_type').on('change', toggleDateInputs);
+});
+</script>
 
 @endsection

@@ -44,6 +44,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin')->name('admin.')->group(
 
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports');
+    Route::get('/reports/print', [ReportController::class, 'print'])->name('reports.print');
+    Route::get('/reports/pdf', [ReportController::class, 'pdf'])->name('reports.pdf');
 });
 
 // Member Routes - Limited Access

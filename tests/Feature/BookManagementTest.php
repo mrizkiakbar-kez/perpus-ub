@@ -185,4 +185,32 @@ class BookManagementTest extends TestCase
         $responseEmpty->assertDontSee('Learn Programming PHP');
         $responseEmpty->assertDontSee('Classic Novel');
     }
+
+    public function test_admin_can_access_print_and_pdf_reports(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $responsePrint = $this->actingAs($admin)->get('/admin/reports/print');
+        $responsePrint->assertStatus(200);
+        $responsePrint->assertSee('LAPORAN PEMINJAMAN BUKU');
+
+        $responsePdf = $this->actingAs($admin)->get('/admin/reports/pdf');
+        $responsePdf->assertStatus(200);
+        $responsePdf->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_member_cannot_access_print_and_pdf_reports(): void
+    {
+        $member = User::factory()->create([
+            'role' => 'member',
+        ]);
+
+        $responsePrint = $this->actingAs($member)->get('/admin/reports/print');
+        $responsePrint->assertRedirect(route('member.dashboard'));
+
+        $responsePdf = $this->actingAs($member)->get('/admin/reports/pdf');
+        $responsePdf->assertRedirect(route('member.dashboard'));
+    }
 }
